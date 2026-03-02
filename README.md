@@ -1,7 +1,7 @@
 # 简介
 
-建立 zxrpaper 目录
+解压，进入 paper-zxr 目录
 
 ```bash
-uv init
+uv sync
 ```
