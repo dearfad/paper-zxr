@@ -1,6 +1,4 @@
-# 创建README使用说明
-
-readme_content = """# MCF-7 / MDA-MB-231 3D类器官图像质控与预处理系统
+# MCF-7 / MDA-MB-231 3D类器官图像质控与预处理系统
 
 ## 📋 系统概述
 
@@ -224,28 +222,10 @@ MDA231: 总计 220, 通过 177 (80.5%)
 
 - 《MCF-7细胞Matrigel 3D培养类器官图像采集与预处理SOP》
 - 项目特定质控标准：拉普拉斯方差>50，亮度均值[50,200]
-  """
 
-with open("/mnt/kimi/output/README.md", 'w', encoding='utf-8') as f:
-f.write(readme_content)
-
-print("✅ README.md 已创建")
-print("\n" + "="*60)
-print("📦 完整交付文件包")
-print("="*60)
-print("位置: /mnt/kimi/output/")
-print("")
-print("文件列表:")
-print(" 1. image_qc_preprocessing.py (25.8KB) - 主程序，包含全部功能类")
-print(" 2. run_qc_pipeline.py (1.5KB) - 快速启动脚本")
-print(" 3. config.yaml (2.1KB) - 配置文件")
-print(" 4. example_usage.py (3.2KB) - 使用示例代码")
-print(" 5. README.md (4.8KB) - 完整使用文档")
-print("")
-print("功能特性:")
-print(" ✅ 人工初筛记录 (ManualQCLogger)")
-print(" ✅ 自动质控 (拉普拉斯方差/亮度/划痕/气泡)")
-print(" ✅ 批量预处理 (裁剪/CLAHE/去噪)")
-print(" ✅ 双细胞系适配 (MCF-7 vs MDA-MB-231)")
-print(" ✅ 自动报告生成")
-print("="\*60)
+功能特性:
+✅ 人工初筛记录 (ManualQCLogger)
+✅ 自动质控 (拉普拉斯方差/亮度/划痕/气泡)
+✅ 批量预处理 (裁剪/CLAHE/去噪)
+✅ 双细胞系适配 (MCF-7 vs MDA-MB-231)
+✅ 自动报告生成

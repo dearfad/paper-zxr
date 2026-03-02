@@ -787,12 +787,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-# 保存脚本
-output_path = "/mnt/kimi/output/image_qc_preprocessing.py"
-with open(output_path, 'w', encoding='utf-8') as f:
-    f.write(script_content)
-
-print(f"✅ 主脚本已保存至: {output_path}")
-print(f"   文件大小: {len(script_content)} 字符")
