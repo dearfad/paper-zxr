@@ -11,3 +11,6 @@ wheels/
 
 # DATA FILES
 data/
+
+# OpenCode Config
+opencode.json
