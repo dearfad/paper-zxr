@@ -1,4 +1,3 @@
-
 """
 使用示例: 如何调用质控系统进行人工初筛和批量处理
 """
@@ -20,10 +19,8 @@ def example_1_manual_qc():
     print("示例1: 人工初筛记录")
     print("="*60)
     
-    # 初始化记录器
     logger = ManualQCLogger(output_dir="./qc_output")
     
-    # 场景A: 发现划痕干扰
     logger.log_rejection(
         image_path="./raw/MCF7_001_24h_F01.tif",
         cell_line="MCF7",
@@ -36,7 +33,6 @@ def example_1_manual_qc():
         notes="图像中央有明显水平亮线，疑似载玻片划痕，影响边缘检测"
     )
     
-    # 场景B: 曝光过度
     logger.log_rejection(
         image_path="./raw/MDA231_005_48h_F03.tif",
         cell_line="MDA231",
@@ -49,7 +45,6 @@ def example_1_manual_qc():
         notes="中心区域过曝，细胞细节丢失"
     )
     
-    # 场景C: 标记通过
     logger.mark_as_passed(
         image_path="./raw/MCF7_002_12h_F02.tif",
         cell_line="MCF7",
@@ -59,9 +54,8 @@ def example_1_manual_qc():
         operator="张实验员"
     )
     
-    # 导出报告
     logger.export_rejection_report()
-    print("✅ 人工初筛记录完成\\n")
+    print("✅ 人工初筛记录完成\n")
 
 
 def example_2_auto_qc():
@@ -72,7 +66,6 @@ def example_2_auto_qc():
     
     qc = AutoImageQC()
     
-    # 评估图像 (假设路径)
     result = qc.evaluate_image("./raw/MCF7_001_24h_F01.tif")
     
     print(f"评估结果:")
@@ -98,14 +91,13 @@ def example_3_preprocess():
     
     preprocessor = ImagePreprocessor()
     
-    # 预处理单张图像
     output = preprocessor.preprocess(
         image_path="./raw/MCF7_001_24h_F01.tif",
         output_path="./processed/MCF7_001_24h_F01_preprocessed.tif"
     )
     
     print(f"✅ 预处理完成，输出尺寸: {output.shape}")
-    print(f"   处理流程: 中心裁剪(0.8) ->  resize(336x336) -> CLAHE -> 去噪\\n")
+    print(f"   处理流程: 中心裁剪(0.8) ->  resize(336x336) -> CLAHE -> 去噪\n")
 
 
 def example_4_batch_process():
@@ -114,9 +106,8 @@ def example_4_batch_process():
     print("示例4: 批量处理工作流")
     print("="*60)
     
-    # 自定义配置 (针对MDA-MB-231调整阈值)
     config = QCConfig(
-        LAPLACIAN_VAR_THRESHOLD=45.0,  # MDA-MB-231边缘不规则，降低阈值
+        LAPLACIAN_VAR_THRESHOLD=45.0,
         BRIGHTNESS_MEAN_MIN=40.0,
         BRIGHTNESS_MEAN_MAX=220.0
     )
@@ -127,21 +118,14 @@ def example_4_batch_process():
         config=config
     )
     
-    # 仅处理MDA-MB-231
     print("开始批量处理 MDA-MB-231 细胞系...")
     results = processor.run_batch(cell_line="MDA231")
     
-    print(f"\\n处理完成，共处理 {len(results)} 张图像")
+    print(f"\n处理完成，共处理 {len(results)} 张图像")
 
 
 if __name__ == '__main__':
-    print("\\n🧬 MCF-7 / MDA-MB-231 图像质控系统使用示例\\n")
-    
-    # 运行示例 (实际使用时取消注释)
-    # example_1_manual_qc()
-    # example_2_auto_qc()
-    # example_3_preprocess()
-    # example_4_batch_process()
+    print("\n🧬 MCF-7 / MDA-MB-231 图像质控系统使用示例\n")
     
     print("提示: 请根据实际路径修改示例中的文件路径后运行")
     print("命令行快速使用:")

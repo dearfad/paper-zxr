@@ -58,6 +58,7 @@ class QCConfig:
     # 支持的图像格式
     SUPPORTED_FORMATS: Tuple[str, ...] = ('.tif', '.tiff', '.png', '.jpg', '.jpeg')
 
+
 # ==================== 1. 人工初筛记录模块 ====================
 
 class ManualQCLogger:
@@ -110,12 +111,12 @@ class ManualQCLogger:
     
     def log_rejection(self, 
                      image_path: str,
-                     cell_line: str,  # 'MCF7' 或 'MDA231'
+                     cell_line: str,
                      sample_id: str,
                      timepoint: str,
                      view_id: str,
                      reject_reason: str,
-                     severity: str = "high",  # high/medium/low
+                     severity: str = "high",
                      operator: str = "operator",
                      notes: str = "") -> None:
         """
@@ -149,10 +150,8 @@ class ManualQCLogger:
             'reviewed': False
         }
         
-        # 添加到DataFrame
         self.records = pd.concat([self.records, pd.DataFrame([record])], ignore_index=True)
         
-        # 保存详细备注
         key = f"{sample_id}_{timepoint}_{view_id}"
         self.notes[key] = {
             'reject_reason': reject_reason,
@@ -160,7 +159,6 @@ class ManualQCLogger:
             'timestamp': record['timestamp']
         }
         
-        # 立即保存
         self._save()
         
         print(f"✗ 已记录不合格图像: {Path(image_path).name} | 原因: {reject_reason}")
@@ -239,7 +237,6 @@ class AutoImageQC:
         else:
             gray = image
         
-        # 拉普拉斯算子
         laplacian = cv2.Laplacian(gray, cv2.CV_64F)
         variance = laplacian.var()
         
@@ -272,10 +269,8 @@ class AutoImageQC:
         else:
             gray = image
         
-        # 边缘检测
         edges = cv2.Canny(gray, 50, 150)
         
-        # 霍夫直线检测
         lines = cv2.HoughLinesP(edges, 1, np.pi/180, 
                                threshold=100, 
                                minLineLength=50, 
@@ -289,7 +284,7 @@ class AutoImageQC:
         
         if lines is not None:
             scratch_info['line_count'] = len(lines)
-            if len(lines) > 5:  # 超过5条直线认为有划痕
+            if len(lines) > 5:
                 scratch_info['has_scratch'] = True
                 scratch_info['severity'] = 'high' if len(lines) > 10 else 'medium'
         
@@ -304,20 +299,18 @@ class AutoImageQC:
         else:
             gray = image
         
-        # 二值化
         _, binary = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY)
         
-        # 查找轮廓
         contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
         bubble_count = 0
         for cnt in contours:
             area = cv2.contourArea(cnt)
-            if area > 50:  # 过滤小噪声
+            if area > 50:
                 perimeter = cv2.arcLength(cnt, True)
                 if perimeter > 0:
                     circularity = 4 * np.pi * area / (perimeter ** 2)
-                    if circularity > 0.7:  # 圆形度
+                    if circularity > 0.7:
                         bubble_count += 1
         
         return {
@@ -341,7 +334,6 @@ class AutoImageQC:
                 'fail_reasons': List[str]
             }
         """
-        # 读取图像
         image = cv2.imread(str(image_path))
         if image is None:
             return {
@@ -352,24 +344,20 @@ class AutoImageQC:
         
         fail_reasons = []
         
-        # 1. 清晰度检测
         lap_var = self.calculate_laplacian_variance(image)
         if lap_var < self.config.LAPLACIAN_VAR_THRESHOLD:
             fail_reasons.append(f"清晰度不足 (拉普拉斯方差: {lap_var:.2f} < {self.config.LAPLACIAN_VAR_THRESHOLD})")
         
-        # 2. 亮度检测
         brightness = self.calculate_brightness_stats(image)
         if not (self.config.BRIGHTNESS_MEAN_MIN <= brightness['mean'] <= self.config.BRIGHTNESS_MEAN_MAX):
             fail_reasons.append(f"亮度均值异常 ({brightness['mean']:.2f} 不在 [{self.config.BRIGHTNESS_MEAN_MIN}, {self.config.BRIGHTNESS_MEAN_MAX}] 区间)")
         if brightness['std'] < self.config.BRIGHTNESS_STD_MIN:
             fail_reasons.append(f"对比度不足 (标准差: {brightness['std']:.2f} < {self.config.BRIGHTNESS_STD_MIN})")
         
-        # 3. 划痕检测
         scratch_info = self.detect_scratches(image)
         if scratch_info['has_scratch'] and scratch_info['severity'] == 'high':
             fail_reasons.append(f"检测到严重划痕干扰 (直线数: {scratch_info['line_count']})")
         
-        # 4. 气泡检测
         bubble_info = self.detect_bubbles(image)
         if bubble_info['has_bubble'] and bubble_info['severity'] == 'high':
             fail_reasons.append(f"检测到严重气泡干扰 (气泡数: {bubble_info['bubble_count']})")
@@ -421,7 +409,6 @@ class ImagePreprocessor:
     def apply_clahe(self, image: np.ndarray) -> np.ndarray:
         """CLAHE自适应直方图均衡化"""
         if len(image.shape) == 3:
-            # 对LAB颜色空间的L通道进行CLAHE
             lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
             lab[:, :, 0] = self.clahe.apply(lab[:, :, 0])
             return cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
@@ -430,9 +417,7 @@ class ImagePreprocessor:
     
     def denoise(self, image: np.ndarray) -> np.ndarray:
         """去噪: 高斯模糊 + 中值滤波"""
-        # 高斯模糊
         denoised = cv2.GaussianBlur(image, (0, 0), self.config.GAUSSIAN_SIGMA)
-        # 中值滤波
         ksize = self.config.MEDIAN_KERNEL_SIZE
         denoised = cv2.medianBlur(denoised, ksize)
         return denoised
@@ -448,24 +433,15 @@ class ImagePreprocessor:
         Returns:
             预处理后的图像数组
         """
-        # 读取
         image = cv2.imread(str(image_path))
         if image is None:
             raise ValueError(f"无法读取图像: {image_path}")
         
-        # 1. 中心裁剪 (聚焦培养核心区)
         image = self.center_crop(image)
-        
-        # 2. 尺寸统一
         image = self.resize_image(image)
-        
-        # 3. CLAHE对比度增强
         image = self.apply_clahe(image)
-        
-        # 4. 去噪
         image = self.denoise(image)
         
-        # 保存
         if output_path:
             Path(output_path).parent.mkdir(parents=True, exist_ok=True)
             cv2.imwrite(str(output_path), image)
@@ -489,15 +465,12 @@ class BatchProcessor:
         self.output_dir = Path(output_dir)
         self.config = config or QCConfig()
         
-        # 初始化模块
         self.manual_logger = ManualQCLogger(output_dir)
         self.auto_qc = AutoImageQC(config)
         self.preprocessor = ImagePreprocessor(config)
         
-        # 创建输出目录结构
         self._create_directory_structure()
         
-        # 统计信息
         self.stats = {
             'total': 0,
             'manual_rejected': 0,
@@ -561,16 +534,13 @@ class BatchProcessor:
         self.stats['total'] += 1
         self.stats['by_cell_line'][cell_line]['total'] += 1
         
-        # Step 1: 自动质控
         qc_result = self.auto_qc.evaluate_image(str(image_path))
         
         if not qc_result['passed']:
             self.stats['auto_rejected'] += 1
-            # 复制到自动拒绝目录
             reject_dir = self.output_dir / f"03_rejected_auto/{cell_line}"
             shutil.copy2(image_path, reject_dir / filename)
             
-            # 记录日志
             log_entry = {
                 'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 'sample_id': sample_id,
@@ -596,14 +566,12 @@ class BatchProcessor:
                 'qc_metrics': qc_result
             }
         
-        # Step 2: 通过质控，进行预处理
         try:
             preprocessed_dir = self.output_dir / f"04_preprocessed/{cell_line}"
             output_path = preprocessed_dir / f"{sample_id}_{timepoint}_{view_id}_preprocessed.tif"
             
             self.preprocessor.preprocess(str(image_path), str(output_path))
             
-            # 复制原始通过图像
             passed_dir = self.output_dir / f"01_passed/{cell_line}"
             shutil.copy2(image_path, passed_dir / filename)
             
@@ -627,7 +595,6 @@ class BatchProcessor:
         Args:
             cell_line: 指定处理特定细胞系 ('MCF7' 或 'MDA231')，None则处理全部
         """
-        # 查找所有图像
         image_files = []
         for ext in self.config.SUPPORTED_FORMATS:
             if cell_line:
@@ -636,19 +603,16 @@ class BatchProcessor:
             else:
                 image_files.extend(self.input_dir.rglob(f"*{ext}"))
         
-        print(f"\\n发现 {len(image_files)} 张图像待处理...")
-        print(f"质控标准: 拉普拉斯方差 > {self.config.LAPLACIAN_VAR_THRESHOLD}, 亮度均值 [50, 200], 标准差 > 20\\n")
+        print(f"\n发现 {len(image_files)} 张图像待处理...")
+        print(f"质控标准: 拉普拉斯方差 > {self.config.LAPLACIAN_VAR_THRESHOLD}, 亮度均值 [50, 200], 标准差 > 20\n")
         
-        # 批量处理
         results = []
         for img_path in tqdm(image_files, desc="处理进度"):
             result = self.process_single_image(img_path)
             results.append(result)
         
-        # 保存日志
         self.manual_logger._save()
         
-        # 生成报告
         self._generate_report(results)
         
         return results
@@ -658,35 +622,34 @@ class BatchProcessor:
         report_path = self.output_dir / f"reports/processing_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
         
         with open(report_path, 'w', encoding='utf-8') as f:
-            f.write("=" * 60 + "\\n")
-            f.write("图像质控与预处理报告\\n")
-            f.write(f"生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\\n")
-            f.write("=" * 60 + "\\n\\n")
+            f.write("=" * 60 + "\n")
+            f.write("图像质控与预处理报告\n")
+            f.write(f"生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write("=" * 60 + "\n\n")
             
-            f.write("【处理统计】\\n")
-            f.write(f"总图像数: {self.stats['total']}\\n")
-            f.write(f"通过质控: {self.stats['passed']} ({self.stats['passed']/max(self.stats['total'],1)*100:.1f}%)\\n")
-            f.write(f"自动拒绝: {self.stats['auto_rejected']} ({self.stats['auto_rejected']/max(self.stats['total'],1)*100:.1f}%)\\n")
-            f.write(f"人工拒绝: {self.stats['manual_rejected']}\\n\\n")
+            f.write("【处理统计】\n")
+            f.write(f"总图像数: {self.stats['total']}\n")
+            f.write(f"通过质控: {self.stats['passed']} ({self.stats['passed']/max(self.stats['total'],1)*100:.1f}%)\n")
+            f.write(f"自动拒绝: {self.stats['auto_rejected']} ({self.stats['auto_rejected']/max(self.stats['total'],1)*100:.1f}%)\n")
+            f.write(f"人工拒绝: {self.stats['manual_rejected']}\n\n")
             
-            f.write("【细胞系分布】\\n")
+            f.write("【细胞系分布】\n")
             for cl, data in self.stats['by_cell_line'].items():
                 if data['total'] > 0:
-                    f.write(f"{cl}: 总计 {data['total']}, 通过 {data['passed']} ({data['passed']/data['total']*100:.1f}%)\\n")
+                    f.write(f"{cl}: 总计 {data['total']}, 通过 {data['passed']} ({data['passed']/data['total']*100:.1f}%)\n")
             
-            f.write("\\n【自动拒绝原因分析】\\n")
+            f.write("\n【自动拒绝原因分析】\n")
             auto_rejected = [r for r in results if r.get('status') == 'auto_rejected']
             if auto_rejected:
-                # 统计拒绝原因
                 reason_counts = {}
                 for r in auto_rejected:
                     for reason in r.get('reason', []):
                         reason_counts[reason] = reason_counts.get(reason, 0) + 1
                 
                 for reason, count in sorted(reason_counts.items(), key=lambda x: -x[1]):
-                    f.write(f"  - {reason}: {count}次\\n")
+                    f.write(f"  - {reason}: {count}次\n")
         
-        print(f"\\n报告已生成: {report_path}")
+        print(f"\n报告已生成: {report_path}")
         print(f"统计: 通过 {self.stats['passed']}/{self.stats['total']} ({self.stats['passed']/max(self.stats['total'],1)*100:.1f}%)")
 
 
@@ -708,7 +671,7 @@ def main():
   python image_qc_preprocessing.py --input_dir ./raw --output_dir ./out --laplacian_threshold 60
   
   # 人工标记不合格图像
-  python image_qc_preprocessing.py --manual_reject --image MCF7_001_24h_F01.tif \\
+  python image_qc_preprocessing.py --manual_reject --image MCF7_001_24h_F01.tif \
       --reason "划痕干扰" --cell_line MCF7 --sample_id MCF7_001 --timepoint 24h --view_id F01
         """
     )
@@ -718,7 +681,6 @@ def main():
     parser.add_argument('--cell_line', type=str, choices=['MCF7', 'MDA231'], 
                        help='指定处理的细胞系')
     
-    # 质控参数
     parser.add_argument('--laplacian_threshold', type=float, default=50.0,
                        help='拉普拉斯方差阈值 (默认: 50)')
     parser.add_argument('--brightness_min', type=float, default=50.0,
@@ -726,7 +688,6 @@ def main():
     parser.add_argument('--brightness_max', type=float, default=200.0,
                        help='亮度均值上限 (默认: 200)')
     
-    # 人工初筛模式
     parser.add_argument('--manual_reject', action='store_true',
                        help='启用手动标记不合格图像模式')
     parser.add_argument('--image', type=str, help='图像文件名')
@@ -746,14 +707,12 @@ def main():
     
     args = parser.parse_args()
     
-    # 配置
     config = QCConfig(
         LAPLACIAN_VAR_THRESHOLD=args.laplacian_threshold,
         BRIGHTNESS_MEAN_MIN=args.brightness_min,
         BRIGHTNESS_MEAN_MAX=args.brightness_max
     )
     
-    # 人工标记模式
     if args.manual_reject:
         if not all([args.image, args.reason, args.cell_line, args.sample_id, args.timepoint, args.view_id]):
             parser.error("人工标记模式需要提供: --image, --reason, --cell_line, --sample_id, --timepoint, --view_id")
@@ -772,7 +731,6 @@ def main():
         )
         return
     
-    # 批量处理模式
     if not args.input_dir or not args.output_dir:
         parser.error("批量处理模式需要提供 --input_dir 和 --output_dir")
     

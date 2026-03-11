@@ -6,7 +6,6 @@
 import sys
 import os
 
-# 将当前目录加入路径
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from image_qc_preprocessing import BatchProcessor, QCConfig, ManualQCLogger
@@ -24,13 +23,11 @@ def main():
     
     args = parser.parse_args()
     
-    # 创建配置
     config = QCConfig(LAPLACIAN_VAR_THRESHOLD=args.threshold)
     
-    # 运行处理
-    print("\\n" + "="*60)
+    print("\n" + "="*60)
     print("🧬 MCF-7 / MDA-MB-231 类器官图像质控系统")
-    print("="*60 + "\\n")
+    print("="*60 + "\n")
     
     processor = BatchProcessor(
         input_dir=args.input_dir,
@@ -40,9 +37,9 @@ def main():
     
     results = processor.run_batch(cell_line=args.cell_line)
     
-    print("\\n✅ 处理完成！")
+    print("\n✅ 处理完成！")
     print(f"📊 详细报告请查看: {args.output_dir}/reports/")
-    print(f"📋 质控日志请查看: {args.output_dir}/manual_qc_log.csv\\n")
+    print(f"📋 质控日志请查看: {args.output_dir}/manual_qc_log.csv\n")
 
 if __name__ == '__main__':
     main()
