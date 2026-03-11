@@ -1,16 +1,2 @@
-# Python-generated files
-__pycache__/
-*.py[oc]
-build/
-dist/
-wheels/
-*.egg-info
-
-# Virtual environments
-.venv
-
-# DATA FILES
-data/
-
-# OpenCode Config
-opencode.json
+# RAW FILES
+data/raw
