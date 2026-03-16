@@ -20,8 +20,8 @@ PATTERN = "{cell}_{id}_{time}_{passage}_{well}_{location}_{magnification}.tif"
 # =============================================================================
 
 
-def validate_filename(filename: str, pattern: str) -> bool:
-    """检验文件名是否符合预设模板"""
+def check_filename(filename: str, pattern: str) -> bool:
+    """检查单个文件名是否符合命名规范"""
     regex_pattern = pattern.replace("{cell}", r"(MCF7|MB231)")
     regex_pattern = regex_pattern.replace("{id}", r"\d+")
     regex_pattern = regex_pattern.replace("{time}", r"(0|6|24|48)h")
@@ -32,15 +32,15 @@ def validate_filename(filename: str, pattern: str) -> bool:
     return bool(re.match(f"^{regex_pattern}$", filename))
 
 
-def validate_directory_filenames(directory: Path, pattern: str) -> dict:
-    """批量检验目录下所有图像文件名是否符合命名规范
+def check_filenames(directory: Path, pattern: str) -> dict:
+    """批量检查目录下所有图像文件名是否符合命名规范
 
     Args:
-        directory: 要检验的目录路径 (Path 对象)
+        directory: 要检查的目录路径 (Path 对象)
         pattern: 文件名模板字符串
 
     Returns:
-        dict: 包含验证结果的字典
+        dict: 包含检查结果的字典
             - valid (list): 符合命名规范的文件名列表
             - invalid (list): 不符合命名规范的文件名列表
     """
@@ -49,7 +49,7 @@ def validate_directory_filenames(directory: Path, pattern: str) -> dict:
     for file_path in directory.iterdir():
         if file_path.is_file():
             filename = file_path.name
-            if validate_filename(filename, pattern):
+            if check_filename(filename, pattern):
                 valid.append(filename)
             else:
                 invalid.append(filename)
@@ -64,8 +64,8 @@ def validate_directory_filenames(directory: Path, pattern: str) -> dict:
 # =============================================================================
 
 
-def test_read_images(directory: Path) -> dict:
-    """测试读取目录下所有图像文件并输出基本信息
+def try_read_images(directory: Path) -> dict:
+    """尝试读取目录下所有图像文件并输出基本信息
 
     Args:
         directory: 要测试的目录路径 (Path 对象)
@@ -109,7 +109,7 @@ def test_read_images(directory: Path) -> dict:
 # =============================================================================
 
 
-def check_missing_images(directory: Path) -> dict:
+def find_missing_images(directory: Path) -> dict:
     """检查图片文件是否缺失，验证数据完整性
 
     检查规则：
@@ -188,7 +188,7 @@ def check_missing_images(directory: Path) -> dict:
 # =============================================================================
 
 
-def check_image_info_consistency(directory: Path) -> dict:
+def compare_image_info(directory: Path) -> dict:
     """检查所有图片信息的一致性
 
     Args:
@@ -298,7 +298,7 @@ def load_image(path: Path) -> np.ndarray:
     return bgr
 
 
-def detect_blur(image: np.ndarray, threshold: float = 100.0) -> dict:
+def check_blur(image: np.ndarray, threshold: float = 100.0) -> dict:
     """使用拉普拉斯方差检测图像模糊度
 
     Args:
@@ -320,7 +320,7 @@ def detect_blur(image: np.ndarray, threshold: float = 100.0) -> dict:
     }
 
 
-def detect_bubbles(
+def check_bubbles(
     image: np.ndarray,
     min_area: int = 100,
     circularity_threshold: float = 0.7,
@@ -369,7 +369,7 @@ def detect_bubbles(
     return {"count": len(bubbles), "bubbles": bubbles}
 
 
-def detect_scratches(
+def check_scratches(
     image: np.ndarray,
     min_length: int = 20,
     line_threshold: int = 50,
@@ -416,7 +416,7 @@ def detect_scratches(
     return {"count": len(scratches), "scratches": scratches}
 
 
-def detect_brightness(image: np.ndarray) -> dict:
+def check_brightness(image: np.ndarray) -> dict:
     """检测图像亮度
 
     Args:
@@ -433,7 +433,7 @@ def detect_brightness(image: np.ndarray) -> dict:
     return {"mean": mean, "std": std}
 
 
-def detect_contrast(image: np.ndarray) -> dict:
+def check_contrast(image: np.ndarray) -> dict:
     """使用拉普拉斯方差检测图像对比度
 
     Args:
@@ -448,7 +448,7 @@ def detect_contrast(image: np.ndarray) -> dict:
     return {"variance": float(variance)}
 
 
-def check_image_quality(
+def check_quality(
     image_path: Path,
     blur_threshold: float = 100.0,
     min_bubble_area: int = 100,
@@ -500,7 +500,7 @@ def check_image_quality(
         }
 
 
-def inspect_directory_quality(
+def check_directory_quality(
     directory: Path,
     blur_threshold: float = 100.0,
     min_bubble_area: int = 100,
@@ -647,23 +647,23 @@ def main():
     """执行所有验证检查"""
     # 1. 图片文件名校验
     print("\n" + "=" * 50 + "\n")
-    validate_directory_filenames(RAW_IMAGE_DIR, PATTERN)
+    check_filenames(RAW_IMAGE_DIR, PATTERN)
 
     # 2. 图片文件读取校验
     print("\n" + "=" * 50 + "\n")
-    test_read_images(RAW_IMAGE_DIR)
+    try_read_images(RAW_IMAGE_DIR)
 
     # 3. 图片文件缺失检测
     print("\n" + "=" * 50 + "\n")
-    check_missing_images(RAW_IMAGE_DIR)
+    find_missing_images(RAW_IMAGE_DIR)
 
     # 4. 图片信息一致性检验
     print("\n" + "=" * 50 + "\n")
-    check_image_info_consistency(RAW_IMAGE_DIR)
+    compare_image_info(RAW_IMAGE_DIR)
 
     # 5. 图像质量检测
     print("\n" + "=" * 50 + "\n")
-    inspect_directory_quality(RAW_IMAGE_DIR)
+    check_directory_quality(RAW_IMAGE_DIR)
 
     print("\n" + "=" * 50 + "\n")
 
