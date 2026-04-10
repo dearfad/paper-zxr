@@ -22,6 +22,7 @@
 
 import argparse
 import sys
+import os
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass, asdict
@@ -451,11 +452,15 @@ def analyze_single_image(
     Returns:
         类器官特征列表
     """
-    # 读取图像
-    image_bgr = cv2.imread(str(image_path))
-    if image_bgr is None:
+    # 使用 PIL 读取图像（避免 OpenCV 读取 TIFF 时的警告）
+    pil_image = Image.open(str(image_path))
+    if pil_image is None:
         print(f"警告：无法读取图像 {image_path}，跳过")
         return []
+    # 转换为 BGR 格式（PIL 是 RGB，OpenCV 需要 BGR）
+    if pil_image.mode == "RGBA":
+        pil_image = pil_image.convert("RGB")
+    image_bgr = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
 
     # 图像预处理
     binary_mask, gray_image = preprocess_image(
@@ -524,7 +529,9 @@ def analyze_single_image(
         output_path = (
             output_contour_dir / f"{image_path.stem}_contours{image_path.suffix}"
         )
-        cv2.imwrite(str(output_path), output_image)
+        # 使用 PIL 保存图像（避免 OpenCV 写入 TIFF 时的警告）
+        output_rgb = cv2.cvtColor(output_image, cv2.COLOR_BGR2RGB)
+        Image.fromarray(output_rgb).save(str(output_path))
 
     return features
 
@@ -660,7 +667,7 @@ def parse_arguments() -> argparse.Namespace:
     )
 
     # 创建互斥参数组：--image 和 --directory 只能指定一个
-    input_group = parser.add_mutually_exclusive_group(required=True)
+    input_group = parser.add_mutually_exclusive_group(required=False)
     input_group.add_argument(
         "--image",
         type=str,
@@ -670,8 +677,8 @@ def parse_arguments() -> argparse.Namespace:
     input_group.add_argument(
         "--directory",
         type=str,
-        default=None,
-        help="输入图像目录路径",
+        default="./data/images",
+        help="输入图像目录路径（默认：./data/images）",
     )
 
     parser.add_argument(
@@ -685,7 +692,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--min-area",
         type=float,
-        default=4000.0,
+        default=3000.0,
         help="最小面积阈值（像素），用于过滤微小杂质（默认：500）",
     )
 
@@ -715,7 +722,9 @@ def parse_arguments() -> argparse.Namespace:
     )
 
     parser.add_argument(
-        "--save-contours", action="store_true", help="保存带有轮廓标记的图像"
+        "--no-save-contours",
+        action="store_true",
+        help="不保存带有轮廓标记的图像（默认保存）",
     )
 
     parser.add_argument(
@@ -745,7 +754,8 @@ def main():
         input_path = Path(args.image)
         is_file_mode = True
     else:
-        input_path = Path(args.directory)
+        # 使用 directory（默认 ./data/images）
+        input_path = Path(args.directory if args.directory else "./data/images")
         is_file_mode = False
 
     # 验证输入路径
@@ -759,9 +769,9 @@ def main():
     else:
         output_excel = project_root / "analysis_results.xlsx"
 
-    # 确定轮廓输出目录：默认放在项目根目录下
+    # 确定轮廓输出目录：默认保存轮廓
     output_contour_dir = None
-    if args.save_contours:
+    if not args.no_save_contours:
         if args.contour_dir:
             output_contour_dir = Path(args.contour_dir)
         else:
@@ -779,7 +789,7 @@ def main():
     print(f"  - 高斯核大小：{args.gaussian_kernel}")
     print(f"  - 自适应块大小：{args.adaptive_block_size}")
     print(f"  - 自适应常数：{args.adaptive_c}")
-    if args.save_contours:
+    if not args.no_save_contours:
         print(f"  - 轮廓输出目录：{output_contour_dir}")
     print("=" * 60)
 
